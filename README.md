@@ -1,5 +1,8 @@
 # Strike-Detector-IoT-Midterm
 Strike Detector Midterm Codes
+
+
+
 import socket
 import math
 import time
