@@ -3,6 +3,8 @@ Strike Detector Midterm Codes
 
 
 
+
+```python
 import socket
 import math
 import time
