@@ -1,6 +1,6 @@
 # Strike-Detector-IoT-Midterm
 Strike Detector Midterm Codes
-
+Python and Arduino IDE
 
 
 
@@ -83,3 +83,74 @@ while time.time() < end_time:
 log.close()
 print("Log Complete")
 print(f"Saved to:{filename}")
+
+```arduino
+#include <WiFi.h>
+#include <WiFiUdp.h>
+#include <Wire.h>
+#include <MPU6050.h>
+
+const char* ssid = "myphone";
+const char* password = "mypassword";
+
+// Put your Raspberry Pi hotspot IP here:
+IPAddress piIP(172, 20, 10, 10);
+const uint16_t piPort = 5005;
+
+// Confirmed I2C pins
+#define SDA_PIN 18
+#define SCL_PIN 9
+
+WiFiUDP udp;
+MPU6050 mpu;
+
+uint32_t seq = 0;
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  // Wi-Fi
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(300);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected");
+  Serial.print("ESP32 IP: ");
+  Serial.println(WiFi.localIP());
+
+  // I2C + MPU
+  Wire.begin(SDA_PIN, SCL_PIN);
+  Wire.setClock(100000);  // safe start
+
+  Serial.println("Initializing MPU6050...");
+  mpu.initialize();
+
+  if (!mpu.testConnection()) {
+    Serial.println("MPU6050 connection failed. Check wiring/pins/power.");
+    while (true) delay(1000);
+  }
+  Serial.println("MPU6050 connected!");
+}
+
+void loop() {
+  int16_t ax, ay, az, gx, gy, gz;
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+  uint32_t t = millis();
+
+  // CSV: seq,t,ax,ay,az,gx,gy,gz
+  char msg[160];
+  snprintf(msg, sizeof(msg), "%lu,%lu,%d,%d,%d,%d,%d,%d",
+           (unsigned long)seq++,
+           (unsigned long)t,
+           ax, ay, az, gx, gy, gz);
+
+  udp.beginPacket(piIP, piPort);
+  udp.print(msg);
+  udp.endPacket();
+
+  delay(10); // ~100 Hz
+}
